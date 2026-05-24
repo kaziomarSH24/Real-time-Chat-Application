@@ -1,8 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Image as ImageIcon, Smile, Paperclip, Send } from 'lucide-react';
 
-const MessageInput = ({ onSendMessage }) => {
+const MessageInput = ({ onSendMessage, onTyping }) => {
     const [newMessage, setNewMessage] = useState('');
+    const lastTypingTime = useRef(null);
+
+    // Trigger typing event with debounce
+    const handleTyping = (e) => {
+        setNewMessage(e.target.value);
+        const now = Date.now();
+        if(!lastTypingTime.current || now - lastTypingTime.current > 2000) {
+            onTyping();
+            lastTypingTime.current = now;
+        }
+    };
 
     // Handle form submission and dispatch the message
     const handleSubmit = (e) => {
@@ -27,7 +38,8 @@ const MessageInput = ({ onSendMessage }) => {
                     <input
                         type="text"
                         value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
+                        // onChange={(e) => setNewMessage(e.target.value)}
+                        onChange={handleTyping} 
                         placeholder="Write your message..."
                         className="w-full bg-transparent text-gray-900 px-4 py-2.5 rounded-3xl focus:outline-none"
                     />

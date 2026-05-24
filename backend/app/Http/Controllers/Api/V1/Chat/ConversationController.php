@@ -19,6 +19,7 @@ class ConversationController extends Controller
     {
         $perPage = $request->query('per_page', 20);
         $userId = $request->user()->id;
+
         $conversations = Conversation::query()
             ->whereHas('users', fn($q) => $q->where('user_id', $userId))
             ->with([
@@ -26,7 +27,8 @@ class ConversationController extends Controller
                 'latestMessage.user:id,name'
             ])
             ->withCount(['messages as unread_count' => function ($query) use ($userId) {
-                $query->whereRaw('NOT EXISTS (
+                $query->where('messages.user_id', '!=', $userId)
+                      ->whereRaw('NOT EXISTS (
                     SELECT 1 FROM message_read_user
                     WHERE message_read_user.message_id = messages.id
                     AND message_read_user.user_id = ?

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axiosInstance from '../utils/axios';
+import axiosInstance from '../../services/axios';
 
 const Login = ({ onLoginSuccess }) => {
     const [email, setEmail] = useState('kaziomar@yopmail.com'); // Default test email
