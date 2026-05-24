@@ -1,0 +1,4 @@
+note.text
+.env
+# docker-compose.override.yml
+certbot_conf

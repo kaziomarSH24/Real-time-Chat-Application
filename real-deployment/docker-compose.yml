@@ -1,0 +1,149 @@
+services:
+  real-time-app:
+    image: kaziomar/real-time:latest
+    container_name: real-time-app
+    restart: unless-stopped
+    working_dir: /var/www
+    env_file: .env
+    networks:
+      - real-time_network
+    volumes:
+      - storage_volume:/var/www/storage
+      - public_assets:/var/www/public
+    depends_on:
+      real-db:
+        condition: service_healthy
+      real-time-redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "cgi-fcgi", "-bind", "-connect", "127.0.0.1:9000"]
+      start_period: 300s
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # frontend:
+  #   image: real-time_frontend
+  #   container_name: real-time_frontend
+  #   restart: unless-stopped
+  #   env_file: .env
+
+  queue-worker:
+    image: kaziomar/real-time:latest
+    container_name: real-time_horizon
+    command: ["queue", "queue:work", "redis", "--timeout=90", "--sleep=3", "--tries=3"]
+    # command: ["queue", "horizon"]
+    restart: unless-stopped
+    env_file: .env
+    networks:
+      - real-time_network
+    depends_on:
+      real-time-app:
+        condition: service_healthy
+      real-time-redis:
+        condition: service_healthy
+      
+
+  scheduler:
+    image: kaziomar/real-time:latest
+    container_name: real-time_scheduler
+    command: ["scheduler", "sh", "-c", "while true; do php /var/www/artisan schedule:run; sleep 60; done"]
+    restart: unless-stopped
+    env_file: .env
+    networks:
+      - real-time_network
+    depends_on:
+      real-db:
+        condition: service_healthy
+
+  real-time-reverb:
+    image: kaziomar/real-time:latest
+    container_name: real-time_reverb
+    restart: unless-stopped
+    networks:
+      - real-time_network
+    command: ["php", "artisan", "reverb:start", "--host=0.0.0.0", "--port=8080"]
+    env_file: .env
+    expose:
+      - "8080" 
+    depends_on:
+      real-time-redis:
+        condition: service_healthy
+
+  real-db:
+    image: mysql:8.0
+    container_name: real-time-db
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - '${FORWARD_DB_PORT:-3306}:3306'
+    environment:
+      MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
+      MYSQL_DATABASE: '${DB_DATABASE}'
+      MYSQL_USER: '${DB_USERNAME}'
+      MYSQL_PASSWORD: '${DB_PASSWORD}'
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - real-time_network
+    healthcheck: 
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+
+  real-time-redis:
+    image: redis:7-alpine
+    container_name: real-time-redis
+    restart: unless-stopped
+    # ports:
+    #   - "6389:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - real-time_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+  real-time-nginx:
+    image: nginx:alpine
+    container_name: real-time-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx:/etc/nginx/conf.d
+      - storage_volume:/var/www/storage:ro
+      - ./certbot_conf:/etc/letsencrypt 
+      - certbot_www:/var/www/certbot
+      - public_assets:/var/www/public:ro
+    networks:
+      - real-time_network
+    depends_on:
+      real-time-app:
+        condition: service_healthy
+    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
+
+  certbot:
+    image: certbot/certbot
+    container_name: real-time-certbot
+    restart: unless-stopped
+    volumes:
+      - ./certbot_conf:/etc/letsencrypt 
+      - certbot_www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    networks:
+      - real-time_network
+
+networks:
+  real-time_network:
+    name: real-time_network
+    
+volumes:
+  db_data:
+  redis_data:
+  storage_volume:
+  public_assets:
+  certbot_www:

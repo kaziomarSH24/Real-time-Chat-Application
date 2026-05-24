@@ -1,0 +1,55 @@
+
+services:
+  real-time-app:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+      args:
+      - INSTALL_DEV=true
+    volumes:
+      - ../backend:/var/www
+      - /var/www/vendor
+      - ./.env:/var/www/.env
+      - ../backend/storage/logs:/var/www/storage/logs
+    environment:
+      REVERB_HOST: real-time-reverb
+
+
+
+  queue-worker:
+    volumes:
+      - ../backend:/var/www
+      - /var/www/vendor
+    environment:
+      REVERB_HOST: real-time-reverb
+
+  scheduler:
+    volumes:
+      - ../backend:/var/www
+      - /var/www/vendor
+
+  real-time-node:
+    image: node:22-alpine
+    container_name: real-time_node
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ../backend:/var/www 
+      - /var/www/node_modules
+    ports:
+      - "5174:5173" 
+    networks:
+      - real-time_network
+    command: sh -c "npm install && npm run dev -- --host"
+
+  real-time-reverb:
+    entrypoint: ["php", "artisan", "reverb:start", "--host=0.0.0.0", "--port=8080", "--debug"]
+    command: []
+    ports:
+      - "8090:8080" 
+    volumes:
+      - ../backend:/var/www
+      - /var/www/vendor
+  
+
+# docker cp real-time-app:/var/www/vendor ../backend/
