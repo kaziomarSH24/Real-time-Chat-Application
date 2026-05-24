@@ -4,7 +4,7 @@ import MessageHeader from './MessageHeader';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
 
-const ChatArea = ({ activeChat, messages, currentUser, onSendMessage, typingUser, onTyping }) => {
+const ChatArea = ({ activeChat, messages, currentUser, onSendMessage, typingUser, onTyping, onlineUsers }) => {
 
     
     // Show placeholder if no conversation is selected
@@ -21,7 +21,7 @@ const ChatArea = ({ activeChat, messages, currentUser, onSendMessage, typingUser
 
     return (
         <div className={`flex-1 flex flex-col h-full bg-white ${activeChat ? 'block' : 'hidden md:block'}`}>
-            <MessageHeader activeChat={activeChat} />
+            <MessageHeader activeChat={activeChat} onlineUsers={onlineUsers} />
             <MessageList messages={messages} activeChat={activeChat} currentUser={currentUser} typingUser={typingUser} />
             <MessageInput onSendMessage={onSendMessage} onTyping={onTyping}/>
         </div>

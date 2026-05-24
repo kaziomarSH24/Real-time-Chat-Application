@@ -49,6 +49,7 @@ export default function App() {
     handleSendMessage,
     typingUser, 
     triggerTyping,
+    onlineUsers
   } = useChat(token);
 
   if (!token) {
@@ -61,6 +62,7 @@ export default function App() {
         conversations={conversations}
         activeChat={activeChat}
         onChatSelect={handleChatSelect}
+        onlineUsers={onlineUsers}
       />
 
       <ChatArea
@@ -70,6 +72,7 @@ export default function App() {
         onSendMessage={handleSendMessage}
         typingUser={typingUser}
         onTyping={triggerTyping}
+        onlineUsers={onlineUsers}
       />
     </div>
   );

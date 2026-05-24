@@ -8,12 +8,12 @@ export const useChat = (token) => {
     const [activeChat, setActiveChat] = useState(null);
     const [messages, setMessages] = useState([]);
     const [typingUser, setTypingUser] = useState(null);
+    const [onlineUsers, setOnlineUsers] = useState([]);
 
-    // রিঅ্যাক্ট স্টেট আপডেটের ঝামেলা এড়াতে আমরা Ref ব্যবহার করছি
     const activeChatRef = useRef(null);
     const typingTimeoutRef = useRef(null);
 
-    // activeChat চেঞ্জ হলেই Ref আপডেট হয়ে যাবে
+    
     useEffect(() => {
         activeChatRef.current = activeChat;
     }, [activeChat]);
@@ -25,6 +25,9 @@ export const useChat = (token) => {
                 const chatName = chat.display_name || chat.name || "Unknown Chat";
                 const displayTime = chat.last_message_time || chat.latest_message?.sent_at_formatted || "";
 
+                const currentUserId = Number(localStorage.getItem("current_user_id"));
+                const otherUser = chat.users?.find(u => u.id !== currentUserId);
+
                 return {
                     id: chat.id,
                     name: chatName,
@@ -32,7 +35,7 @@ export const useChat = (token) => {
                     lastMessage: chat.last_message_preview || "No messages yet...",
                     time: displayTime,
                     unread: chat.unread_count || 0,
-                    isOnline: true,
+                    otherUser: otherUser?.id
                 };
             });
             setConversations(formattedConversations);
@@ -40,6 +43,26 @@ export const useChat = (token) => {
             console.error("Error fetching conversations:", error);
         }
     };
+
+    //real-time Online/offline traking
+    useEffect(()=> {
+        echo.join('online')
+        //.here() gives the list of currently online users when we join the channel
+            .here((users) => {
+                setOnlineUsers(users.map(u => u.id));
+            })
+            //.joinging() and .leaving() are used to track users coming online or going offline in real-time
+            .joining((user) => {
+                setOnlineUsers((prev) => [...prev, user.id]);
+            })
+            .leaving((user) => {
+                setOnlineUsers((prev) => prev.filter(id => id !== user.id));
+            });
+        return () => {
+            echo.leave('online');
+        };
+    }, [token]);
+    
 
     // initial fetch of conversations when token is available
     useEffect(() => {
@@ -184,6 +207,7 @@ export const useChat = (token) => {
         activeChat,
         messages,
         typingUser,
+        onlineUsers,
         handleChatSelect,
         handleSendMessage,
         triggerTyping
