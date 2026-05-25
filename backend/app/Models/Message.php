@@ -44,4 +44,10 @@ class Message extends Model
     {
         return $this->belongsToMany(User::class, 'message_read_user', 'message_id', 'user_id');
     }
+
+    //media url accessor to return full url
+    public function getMediaUrlAttribute($value)
+    {
+        return $value ? asset('storage/' . $value) : null;
+    }
 }

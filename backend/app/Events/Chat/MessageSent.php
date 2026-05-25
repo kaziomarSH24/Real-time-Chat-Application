@@ -2,10 +2,9 @@
 
 namespace App\Events\Chat;
 
+use App\Http\Resources\Chat\MessageResource;
 use App\Models\Message;
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
@@ -36,7 +35,8 @@ class MessageSent implements ShouldBroadcast
 
     public function broadcastWith(): array
     {
-        // The payload sent to the frontend
-        return ['message' => $this->message->load('user')];
+        return [
+            'message' => (new MessageResource($this->message->load('user')))->resolve()
+        ];
     }
 }

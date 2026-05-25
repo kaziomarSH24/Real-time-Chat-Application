@@ -16,6 +16,7 @@ class MessageResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $isSender = $this->user_id === $request->user()?->id;
          return [
             'id' => $this->id,
             'body' => $this->body,
@@ -24,7 +25,7 @@ class MessageResource extends JsonResource
             'sent_at' => $this->created_at,
             'sent_at_formatted' => $this->formatTimestamp($this->created_at),
             'sender' => new UserResource($this->whenLoaded('user')),
-            'is_sender' => $this->user_id === $request->user()->id,
+            'is_sender' => $isSender,
             'is_read' => (bool) $this->is_read,
         ];
     }

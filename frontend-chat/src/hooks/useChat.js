@@ -2,7 +2,7 @@
 import { useEffect, useRef } from "react";
 import axiosInstance from "../services/axios";
 import echo from "../services/echo";
-import { mapMessage } from "../utils/chatHelpers";
+import { mapMessage, generatePreviewText } from "../utils/chatHelpers";
 import { useChatStore } from "../store/chatStore";
 import { usePresence } from "./usePresence";
 import { useMessages } from "./useMessages";
@@ -79,10 +79,14 @@ export const useChat = (token) => {
                 // Update sidebar instantly via store without reloading everything
                 const currentConvo = useChatStore.getState().conversations.find(c => c.id === chat.id);
                 const newUnread = isOpen ? 0 : (currentConvo?.unread || 0) + 1;
+
+                // Format the incoming raw message for our helper
+                const tempMappedMsg = mapMessage(msg);
+                const sidebarLastMessage = generatePreviewText(tempMappedMsg, currentUserId);
                 
                 updateConversationSidebar(
                     chat.id, 
-                    msg.body || msg.text || "Attachment", 
+                    sidebarLastMessage, 
                     new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                     newUnread
                 );

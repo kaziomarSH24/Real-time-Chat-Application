@@ -19,7 +19,7 @@ const MessageList = () => {
 
   // 2. We need the loadMore function from our custom hook
   const { loadMoreMessages } = useMessages();
-  
+
   // Get current user ID from local storage for comparing senderId
   const currentUserId = Number(localStorage.getItem("current_user_id"));
 
@@ -41,12 +41,13 @@ const MessageList = () => {
     if (!container) return;
 
     if (prevScrollHeightRef.current > 0) {
-      container.scrollTop = container.scrollHeight - prevScrollHeightRef.current;
-      prevScrollHeightRef.current = 0; 
+      container.scrollTop =
+        container.scrollHeight - prevScrollHeightRef.current;
+      prevScrollHeightRef.current = 0;
     } else {
       scrollToBottom();
     }
-  }, [messages]); 
+  }, [messages]);
 
   useEffect(() => {
     if (typingUser) scrollToBottom();
@@ -58,14 +59,18 @@ const MessageList = () => {
   if (messages.length === 0 && !isLoadingMore) {
     return (
       <div className="flex-1 overflow-y-auto p-4 lg:p-6 bg-gray-50 flex flex-col items-center justify-center text-gray-500">
-        <img src={activeChat.avatar} className="w-24 h-24 rounded-full mb-4 opacity-50" alt="" />
+        <img
+          src={activeChat.avatar}
+          className="w-24 h-24 rounded-full mb-4 opacity-50"
+          alt=""
+        />
         <p>No messages yet. Start the conversation!</p>
       </div>
     );
   }
 
   return (
-    <div 
+    <div
       className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-4 bg-gray-50"
       ref={containerRef}
       onScroll={handleScroll}
@@ -82,31 +87,81 @@ const MessageList = () => {
         const isConsecutive = prevMsg && prevMsg.senderId === msg.senderId;
 
         return (
-          <div key={msg.id} className={`flex ${isOwnMessage ? "justify-end" : "justify-start"} ${isConsecutive ? "mt-1" : "mt-4"}`}>
+          <div
+            key={msg.id}
+            className={`flex ${isOwnMessage ? "justify-end" : "justify-start"} ${isConsecutive ? "mt-1" : "mt-4"}`}
+          >
             {!isOwnMessage && !isConsecutive && (
-              <img src={activeChat.avatar} alt="" className="w-7 h-7 rounded-full mr-2 self-end mb-1" />
+              <img
+                src={activeChat.avatar}
+                alt=""
+                className="w-7 h-7 rounded-full mr-2 self-end mb-1"
+              />
             )}
-            {!isOwnMessage && isConsecutive && (
-              <div className="w-7 mr-2"></div>
-            )}
+            {!isOwnMessage && isConsecutive && <div className="w-7 mr-2"></div>}
 
-            <div className={`max-w-[75%] lg:max-w-[60%] px-4 py-2 ${isOwnMessage ? "bg-blue-500 text-white rounded-2xl rounded-br-sm" : "bg-white border border-gray-200 text-gray-900 rounded-2xl rounded-bl-sm shadow-sm"}`}>
-              <p className="text-[15px] leading-relaxed">{msg.text}</p>
-              
-              <div className={`flex items-center justify-end mt-1 space-x-1 text-[11px] ${isOwnMessage ? "text-blue-100" : "text-gray-400"}`}>
+            <div
+              className={`max-w-[75%] lg:max-w-[60%] px-4 py-2 ${isOwnMessage ? "bg-blue-500 text-white rounded-2xl rounded-br-sm" : "bg-white border border-gray-200 text-gray-900 rounded-2xl rounded-bl-sm shadow-sm"}`}
+            >
+              {/* render media */}
+              {msg.media_url && (
+                <div className="mb-2">
+                  {msg.media_type === "image" ? (
+                    <img
+                      src={
+                        msg.media_url.startsWith("http")
+                          ? msg.media_url
+                          : `http://localhost:8000/storage/${msg.media_url}`
+                      }
+                      alt="Attachment"
+                      className="rounded-lg max-h-60 object-contain"
+                    />
+                  ) : (
+                    <a
+                      href={
+                        msg.media_url.startsWith("http")
+                          ? msg.media_url
+                          : `http://localhost:8000/storage/${msg.media_url}`
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline text-sm font-medium break-all"
+                    >
+                      📎 View File
+                    </a>
+                  )}
+                </div>
+              )}
+
+              {/* render text */}
+              {msg.text && (
+                <p className="text-[15px] leading-relaxed">{msg.text}</p>
+              )}
+
+              {/* time and recipit */}
+              <div
+                className={`flex items-center justify-end mt-1 space-x-1 text-[11px] ${isOwnMessage ? "text-blue-100" : "text-gray-400"}`}
+              >
                 <span>{msg.time}</span>
-                {isOwnMessage && (
-                  msg.isRead ? <CheckCheck className="w-4 h-4 text-white" /> : <Check className="w-4 h-4" />
-                )}
+                {isOwnMessage &&
+                  (msg.isRead ? (
+                    <CheckCheck className="w-4 h-4 text-white" />
+                  ) : (
+                    <Check className="w-4 h-4" />
+                  ))}
               </div>
             </div>
           </div>
         );
       })}
-      
+
       {typingUser && (
         <div className="flex justify-start mt-4">
-          <img src={activeChat.avatar} alt="" className="w-7 h-7 rounded-full mr-2 self-end mb-1" />
+          <img
+            src={activeChat.avatar}
+            alt=""
+            className="w-7 h-7 rounded-full mr-2 self-end mb-1"
+          />
           <div className="bg-white border border-gray-200 text-gray-900 rounded-2xl rounded-bl-sm shadow-sm px-4 py-3 flex items-center space-x-1">
             <div className="w-2 h-2 bg-gray-400 rounded-full typing-dot"></div>
             <div className="w-2 h-2 bg-gray-400 rounded-full typing-dot"></div>
