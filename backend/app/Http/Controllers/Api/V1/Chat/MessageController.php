@@ -30,7 +30,15 @@ class MessageController extends Controller
     {
         $perPage = $request->query('per_page', 50);
         $this->authorize('view', $conversation);
-        $messages = $conversation->messages()->latest()->paginate($perPage);
+
+        $messages = $conversation->messages()
+            ->with('user')
+            ->withExists(['readBy as is_read' => function ($query) {
+                $query->whereColumn('message_read_user.user_id', '!=', 'messages.user_id');
+            }])
+            ->latest()
+            ->paginate($perPage);
+
         return MessageResource::collection($messages);
     }
 

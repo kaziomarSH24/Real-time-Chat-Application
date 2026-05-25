@@ -39,4 +39,9 @@ class Message extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function readBy()
+    {
+        return $this->belongsToMany(User::class, 'message_read_user', 'message_id', 'user_id');
+    }
 }

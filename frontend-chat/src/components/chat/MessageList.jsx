@@ -1,4 +1,5 @@
 import React, { useRef, useEffect } from "react";
+import { Check, CheckCheck } from "lucide-react";
 
 const MessageList = ({ messages, activeChat, currentUser, typingUser }) => {
   const messagesEndRef = useRef(null);
@@ -8,9 +9,10 @@ const MessageList = ({ messages, activeChat, currentUser, typingUser }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  // Whenever messages or typing status changes, scroll to bottom
   useEffect(() => {
     scrollToBottom();
-  }, [messages, typingUser]); // Whenever messages or typing status changes, scroll to bottom
+  }, [messages, typingUser]); 
 
   // Render empty state if there are no messages
   if (messages.length === 0) {
@@ -59,10 +61,20 @@ const MessageList = ({ messages, activeChat, currentUser, typingUser }) => {
               }`}
             >
               <p className="text-[15px] leading-relaxed">{msg.text}</p>
+              
+              {/* Timestamp and Read Receipts section added right below the message text */}
+              <div className={`flex items-center justify-end mt-1 space-x-1 text-[11px] ${isOwnMessage ? "text-blue-100" : "text-gray-400"}`}>
+                <span>{msg.time}</span>
+                {isOwnMessage && (
+                  msg.isRead ? <CheckCheck className="w-4 h-4 text-white" /> : <Check className="w-4 h-4" />
+                )}
+              </div>
+              
             </div>
           </div>
         );
       })}
+      
       {/* Typing Indicator */}
       {typingUser && (
         <div className="flex justify-start mt-4">
@@ -78,6 +90,7 @@ const MessageList = ({ messages, activeChat, currentUser, typingUser }) => {
           </div>
         </div>
       )}
+      
       {/* Dummy div to attach the scroll ref */}
       <div ref={messagesEndRef} />
     </div>

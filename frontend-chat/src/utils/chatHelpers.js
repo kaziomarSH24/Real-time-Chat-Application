@@ -16,5 +16,6 @@ export const mapMessage = (msg) => {
                 minute: "2-digit",
             })
             : "",
+        isRead: msg.is_read || false,
     };
 };

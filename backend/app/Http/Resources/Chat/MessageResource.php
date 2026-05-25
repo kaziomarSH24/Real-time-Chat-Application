@@ -25,6 +25,7 @@ class MessageResource extends JsonResource
             'sent_at_formatted' => $this->formatTimestamp($this->created_at),
             'sender' => new UserResource($this->whenLoaded('user')),
             'is_sender' => $this->user_id === $request->user()->id,
+            'is_read' => (bool) $this->is_read,
         ];
     }
 }

@@ -4,24 +4,33 @@ import { useState, useEffect, useRef } from "react";
 import axiosInstance from "../services/axios";
 import echo from "../services/echo";
 import { mapMessage } from "../utils/chatHelpers";
-import { usePresence } from "./usePresence"; 
+import { usePresence } from "./usePresence";
+import { useMessages } from "./useMessages";
 
 export const useChat = (token) => {
     const [conversations, setConversations] = useState([]);
     const [activeChat, setActiveChat] = useState(null);
-    const [messages, setMessages] = useState([]);
-    const [typingUser, setTypingUser] = useState(null);
-
     const activeChatRef = useRef(null);
-    const typingTimeoutRef = useRef(null);
 
-    // Presence Channel 
-    const onlineUsers = usePresence(token);
-
+    // Keep a reference to the active chat for the global listener
     useEffect(() => {
         activeChatRef.current = activeChat;
     }, [activeChat]);
 
+    // 1. Get online users from usePresence hook
+    const onlineUsers = usePresence(token);
+
+    // 2. Get message functionalities from useMessages hook
+    const {
+        messages,
+        setMessages,
+        typingUser,
+        setTypingUser,
+        handleSendMessage,
+        triggerTyping
+    } = useMessages(activeChat, setConversations);
+
+    // 3. Fetch initial conversations
     const fetchConversations = async () => {
         try {
             const response = await axiosInstance.get("/chat/conversations");
@@ -53,24 +62,11 @@ export const useChat = (token) => {
         fetchConversations();
     }, [token]);
 
-    const handleChatSelect = async (chat) => {
+    const handleChatSelect = (chat) => {
         setActiveChat(chat);
-        try {
-            const response = await axiosInstance.get(`/chat/conversations/${chat.id}/messages`);
-            const fetchedMessages = response.data.data.reverse().map(mapMessage);
-            setMessages(fetchedMessages);
-
-            await axiosInstance.post(`/chat/messages/read`, { conversation_id: chat.id });
-
-            setConversations(prev => prev.map(c =>
-                c.id === chat.id ? { ...c, unread: 0 } : c
-            ));
-        } catch (error) {
-            console.error("Error fetching messages:", error);
-        }
     };
 
-    
+    // 4. Global Listener for incoming messages
     useEffect(() => {
         if (conversations.length === 0) return;
 
@@ -82,8 +78,10 @@ export const useChat = (token) => {
             echo.private(channelName).listen(".message.sent", (event) => {
                 const msg = event.message;
 
+                // Ignore messages sent by the current user
                 if (msg.user_id === currentUserId || msg.sender?.id === currentUserId) return;
 
+                // Update sidebar instantly
                 setConversations((prevConvos) => prevConvos.map((c) => {
                     if (c.id === chat.id) {
                         const isOpen = activeChatRef.current?.id === chat.id;
@@ -97,6 +95,7 @@ export const useChat = (token) => {
                     return c;
                 }));
 
+                // If the chat is currently open, add the message to the screen
                 if (activeChatRef.current?.id === chat.id) {
                     const mappedMsg = mapMessage(msg);
                     setMessages((prev) => {
@@ -105,82 +104,27 @@ export const useChat = (token) => {
                         return [...prev, mappedMsg];
                     });
 
+                    // Clear typing indicator
                     setTypingUser(null);
-                    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
 
+                    // Mark as read instantly
                     axiosInstance.post(`/chat/messages/read`, { conversation_id: chat.id }).catch(e => console.log(e));
                 }
             });
         });
 
+        // Cleanup listeners
         return () => {
             conversations.forEach((chat) => echo.leave(`conversations.${chat.id}`));
         };
-    }, [conversations.length]);
-
-    // typing indicator logic
-    useEffect(() => {
-        if (!activeChat) return;
-
-        const channelName = `conversations.${activeChat.id}`;
-        const currentUserId = Number(localStorage.getItem("current_user_id"));
-
-        echo.private(channelName).listen(".user.typing", (event) => {
-            if (event.user.id === currentUserId) return;
-
-            setTypingUser(event.user.name);
-            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-
-            typingTimeoutRef.current = setTimeout(() => {
-                setTypingUser(null);
-            }, 3000);
-        });
-
-        return () => {
-            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-        };
-    }, [activeChat]);
-
-    const handleSendMessage = async (text) => {
-        if (!activeChat) return;
-        try {
-            const response = await axiosInstance.post("/chat/messages", {
-                conversation_id: activeChat.id,
-                body: text,
-            });
-
-            const newMsg = response.data.data;
-            const mappedMsg = mapMessage(newMsg);
-
-            setMessages((prev) => [...prev, mappedMsg]);
-
-            setConversations((prevConvos) => prevConvos.map((c) => {
-                if (c.id === activeChat.id) {
-                    return { ...c, lastMessage: mappedMsg.text, time: mappedMsg.time };
-                }
-                return c;
-            }));
-
-        } catch (error) {
-            console.error("Error sending message:", error);
-        }
-    };
-
-    const triggerTyping = async () => {
-        if (!activeChat) return;
-        try {
-            await axiosInstance.post(`/chat/conversations/${activeChat.id}/typing`, {
-                conversation_id: activeChat.id
-            });
-        } catch (error) {}
-    };
+    }, [conversations.length, setMessages, setTypingUser]);
 
     return {
         conversations,
         activeChat,
         messages,
         typingUser,
-        onlineUsers, 
+        onlineUsers,
         handleChatSelect,
         handleSendMessage,
         triggerTyping
