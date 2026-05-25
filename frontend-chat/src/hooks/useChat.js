@@ -27,7 +27,10 @@ export const useChat = (token) => {
         typingUser,
         setTypingUser,
         handleSendMessage,
-        triggerTyping
+        triggerTyping,
+        loadMoreMessages,
+        hasMore,
+        isLoadingMore,
     } = useMessages(activeChat, setConversations);
 
     // 3. Fetch initial conversations
@@ -127,6 +130,9 @@ export const useChat = (token) => {
         onlineUsers,
         handleChatSelect,
         handleSendMessage,
-        triggerTyping
+        triggerTyping,
+        loadMoreMessages,
+        hasMore,
+        isLoadingMore,
     };
 };

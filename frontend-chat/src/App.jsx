@@ -49,7 +49,10 @@ export default function App() {
     handleSendMessage,
     typingUser, 
     triggerTyping,
-    onlineUsers
+    onlineUsers,
+    isLoadingMore,
+    hasMore,
+    loadMoreMessages,
   } = useChat(token);
 
   if (!token) {
@@ -73,6 +76,9 @@ export default function App() {
         typingUser={typingUser}
         onTyping={triggerTyping}
         onlineUsers={onlineUsers}
+        onLoadMore={loadMoreMessages}
+        hasMore={hasMore}
+        isLoadingMore={isLoadingMore}
       />
     </div>
   );
