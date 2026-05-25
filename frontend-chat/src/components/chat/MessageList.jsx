@@ -1,13 +1,27 @@
+// src/components/chat/MessageList.jsx
 import React, { useRef, useEffect, useLayoutEffect } from "react";
 import { Check, CheckCheck, Loader2 } from "lucide-react";
+import { useChatStore } from "../../store/chatStore"; // Import the store
+import { useMessages } from "../../hooks/useMessages"; // Need this for loadMoreMessages function
 
-const MessageList = ({ messages, activeChat, currentUser, typingUser, onLoadMore, hasMore, isLoadingMore }) => {
+// No props needed anymore!
+const MessageList = () => {
   const containerRef = useRef(null);
   const messagesEndRef = useRef(null);
-  
-  // Best Practice: Use a ref instead of state to track scroll height. 
-  // This avoids unnecessary re-renders that cause scroll jumping.
   const prevScrollHeightRef = useRef(0);
+
+  // 1. Fetch ALL required data directly from Zustand store
+  const activeChat = useChatStore((state) => state.activeChat);
+  const messages = useChatStore((state) => state.messages);
+  const typingUser = useChatStore((state) => state.typingUser);
+  const hasMore = useChatStore((state) => state.hasMore);
+  const isLoadingMore = useChatStore((state) => state.isLoadingMore);
+
+  // 2. We need the loadMore function from our custom hook
+  const { loadMoreMessages } = useMessages();
+  
+  // Get current user ID from local storage for comparing senderId
+  const currentUserId = Number(localStorage.getItem("current_user_id"));
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -16,35 +30,30 @@ const MessageList = ({ messages, activeChat, currentUser, typingUser, onLoadMore
   const handleScroll = () => {
     if (!containerRef.current) return;
 
-    // When the user scrolls to the absolute top, save the current height and fetch more
     if (containerRef.current.scrollTop === 0 && hasMore && !isLoadingMore) {
       prevScrollHeightRef.current = containerRef.current.scrollHeight;
-      onLoadMore();
+      loadMoreMessages();
     }
   };
 
-  // useLayoutEffect runs synchronously after DOM mutations but before the browser paints
   useLayoutEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     if (prevScrollHeightRef.current > 0) {
-      // 1. Pagination just finished: Calculate the new space added to the top
-      // and push the scrollbar down by exactly that amount to maintain position.
       container.scrollTop = container.scrollHeight - prevScrollHeightRef.current;
-      
-      // Reset the ref so it doesn't interfere with future new messages
       prevScrollHeightRef.current = 0; 
     } else {
-      // 2. Initial load or a brand new message arrived: Scroll to the very bottom
       scrollToBottom();
     }
-  }, [messages]); // Depend strictly on messages array changes
+  }, [messages]); 
 
-  // Auto-scroll when someone starts typing
   useEffect(() => {
     if (typingUser) scrollToBottom();
   }, [typingUser]);
+
+  // Failsafe if activeChat is null
+  if (!activeChat) return null;
 
   if (messages.length === 0 && !isLoadingMore) {
     return (
@@ -61,7 +70,6 @@ const MessageList = ({ messages, activeChat, currentUser, typingUser, onLoadMore
       ref={containerRef}
       onScroll={handleScroll}
     >
-      {/* Loading Spinner for older messages */}
       {isLoadingMore && (
         <div className="flex justify-center py-2 overflow-hidden">
           <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
@@ -69,7 +77,7 @@ const MessageList = ({ messages, activeChat, currentUser, typingUser, onLoadMore
       )}
 
       {messages.map((msg, index) => {
-        const isOwnMessage = msg.senderId === currentUser.id;
+        const isOwnMessage = msg.senderId === currentUserId; // Changed to use local storage ID
         const prevMsg = index > 0 ? messages[index - 1] : null;
         const isConsecutive = prevMsg && prevMsg.senderId === msg.senderId;
 
@@ -96,7 +104,6 @@ const MessageList = ({ messages, activeChat, currentUser, typingUser, onLoadMore
         );
       })}
       
-      {/* Typing Indicator */}
       {typingUser && (
         <div className="flex justify-start mt-4">
           <img src={activeChat.avatar} alt="" className="w-7 h-7 rounded-full mr-2 self-end mb-1" />

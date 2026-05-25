@@ -1,60 +1,55 @@
-import React, { useState, useRef } from 'react';
-import { Image as ImageIcon, Smile, Paperclip, Send } from 'lucide-react';
+// src/components/chat/MessageInput.jsx
+import React, { useState } from 'react';
+import { Paperclip, Smile, Send } from 'lucide-react';
+import { useMessages } from '../../hooks/useMessages'; // Need this for the action functions
 
-const MessageInput = ({ onSendMessage, onTyping }) => {
+// No props needed!
+const MessageInput = () => {
     const [newMessage, setNewMessage] = useState('');
-    const lastTypingTime = useRef(null);
+    
+    // Fetch the actions from our custom hook
+    const { handleSendMessage, triggerTyping } = useMessages();
 
-    // Trigger typing event with debounce
-    const handleTyping = (e) => {
-        setNewMessage(e.target.value);
-        const now = Date.now();
-        if(!lastTypingTime.current || now - lastTypingTime.current > 2000) {
-            onTyping();
-            lastTypingTime.current = now;
+    const onSubmit = (e) => {
+        e.preventDefault();
+        if (newMessage.trim()) {
+            handleSendMessage(newMessage); // Call the hook function directly
+            setNewMessage('');
         }
     };
 
-    // Handle form submission and dispatch the message
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        if (!newMessage.trim()) return;
-        
-        onSendMessage(newMessage.trim());
-        setNewMessage('');
+    const handleKeyDown = (e) => {
+        // Trigger typing event when user presses a key (but not Enter)
+        if (e.key !== 'Enter') {
+            triggerTyping();
+        }
     };
 
     return (
-        <div className="p-4 bg-white border-t border-gray-200 flex-shrink-0">
-            <form onSubmit={handleSubmit} className="flex items-end space-x-2">
-                {/* Attachment buttons */}
-                <div className="flex space-x-1 pb-2 text-blue-500 hidden sm:flex">
-                    <button type="button" className="p-2 hover:bg-gray-100 rounded-full transition"><Paperclip className="w-5 h-5" /></button>
-                    <button type="button" className="p-2 hover:bg-gray-100 rounded-full transition"><ImageIcon className="w-5 h-5" /></button>
-                </div>
-                
-                {/* Input field */}
-                <div className="flex-1 relative bg-gray-100 rounded-3xl border border-transparent focus-within:border-gray-300 transition-colors">
+        <div className="p-4 bg-white border-t border-gray-200 flex-shrink-0 z-10 relative">
+            <form onSubmit={onSubmit} className="flex items-center space-x-2 lg:space-x-4 max-w-6xl mx-auto">
+                <button type="button" className="p-2.5 text-gray-500 hover:bg-gray-100 rounded-full transition-colors hidden sm:block">
+                    <Paperclip className="w-5 h-5 lg:w-6 lg:h-6" />
+                </button>
+                <div className="flex-1 relative">
                     <input
                         type="text"
                         value={newMessage}
-                        // onChange={(e) => setNewMessage(e.target.value)}
-                        onChange={handleTyping} 
-                        placeholder="Write your message..."
-                        className="w-full bg-transparent text-gray-900 px-4 py-2.5 rounded-3xl focus:outline-none"
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        placeholder="Type a message..."
+                        className="w-full bg-gray-100 text-gray-800 rounded-full py-2.5 lg:py-3 pl-4 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all duration-200"
                     />
-                    <button type="button" className="absolute right-2 top-2 p-1 text-gray-400 hover:text-blue-500 transition">
-                        <Smile className="w-5 h-5" />
+                    <button type="button" className="absolute right-2 top-2 lg:top-2.5 p-1 text-gray-400 hover:text-gray-600 transition-colors">
+                        <Smile className="w-5 h-5 lg:w-6 lg:h-6" />
                     </button>
                 </div>
-                
-                {/* Submit button */}
-                <button 
-                    type="submit" 
+                <button
+                    type="submit"
                     disabled={!newMessage.trim()}
-                    className={`p-2.5 rounded-full transition ${newMessage.trim() ? 'bg-blue-500 text-white hover:bg-blue-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                    className="p-2.5 lg:p-3 bg-blue-500 text-white rounded-full hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
                 >
-                    <Send className="w-5 h-5" />
+                    <Send className="w-5 h-5 lg:w-6 lg:h-6" />
                 </button>
             </form>
         </div>

@@ -1,10 +1,13 @@
 // src/hooks/usePresence.js
-
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import echo from "../services/echo";
+import { useChatStore } from "../store/chatStore";
 
 export const usePresence = (token) => {
-    const [onlineUsers, setOnlineUsers] = useState([]);
+    // Fetch store actions
+    const setOnlineUsers = useChatStore((state) => state.setOnlineUsers);
+    const addOnlineUser = useChatStore((state) => state.addOnlineUser);
+    const removeOnlineUser = useChatStore((state) => state.removeOnlineUser);
 
     useEffect(() => {
         if (!token) return;
@@ -14,16 +17,14 @@ export const usePresence = (token) => {
                 setOnlineUsers(users.map(u => u.id));
             })
             .joining((user) => {
-                setOnlineUsers((prev) => [...prev, user.id]);
+                addOnlineUser(user.id);
             })
             .leaving((user) => {
-                setOnlineUsers((prev) => prev.filter(id => id !== user.id));
+                removeOnlineUser(user.id);
             });
 
         return () => {
             echo.leave('online');
         };
-    }, [token]);
-
-    return onlineUsers;
+    }, [token, setOnlineUsers, addOnlineUser, removeOnlineUser]);
 };

@@ -1,73 +1,63 @@
 // src/hooks/useChat.js
-
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import axiosInstance from "../services/axios";
 import echo from "../services/echo";
 import { mapMessage } from "../utils/chatHelpers";
+import { useChatStore } from "../store/chatStore";
 import { usePresence } from "./usePresence";
 import { useMessages } from "./useMessages";
 
 export const useChat = (token) => {
-    const [conversations, setConversations] = useState([]);
-    const [activeChat, setActiveChat] = useState(null);
-    const activeChatRef = useRef(null);
+    // 1. Initialize the other hooks so they run their background listeners
+    usePresence(token);
+    const { handleSendMessage, triggerTyping, loadMoreMessages } = useMessages(token);
 
-    // Keep a reference to the active chat for the global listener
+    // 2. Fetch required states and actions from Zustand store
+    const conversations = useChatStore((state) => state.conversations);
+    const setConversations = useChatStore((state) => state.setConversations);
+    const activeChat = useChatStore((state) => state.activeChat);
+    const updateConversationSidebar = useChatStore((state) => state.updateConversationSidebar);
+
+    // Keep a ref of activeChat for the global WebSocket listener
+    const activeChatRef = useRef(null);
     useEffect(() => {
         activeChatRef.current = activeChat;
     }, [activeChat]);
 
-    // 1. Get online users from usePresence hook
-    const onlineUsers = usePresence(token);
-
-    // 2. Get message functionalities from useMessages hook
-    const {
-        messages,
-        setMessages,
-        typingUser,
-        setTypingUser,
-        handleSendMessage,
-        triggerTyping,
-        loadMoreMessages,
-        hasMore,
-        isLoadingMore,
-    } = useMessages(activeChat, setConversations);
-
     // 3. Fetch initial conversations
-    const fetchConversations = async () => {
-        try {
-            const response = await axiosInstance.get("/chat/conversations");
-            const formattedConversations = response.data.data.map((chat) => {
-                const chatName = chat.display_name || chat.name || "Unknown Chat";
-                const displayTime = chat.last_message_time || chat.latest_message?.sent_at_formatted || "";
-
-                const currentUserId = Number(localStorage.getItem("current_user_id"));
-                const otherUser = chat.users?.find(u => u.id !== currentUserId);
-
-                return {
-                    id: chat.id,
-                    name: chatName,
-                    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(chatName)}&background=random`,
-                    lastMessage: chat.last_message_preview || "No messages yet...",
-                    time: displayTime,
-                    unread: chat.unread_count || 0,
-                    otherUser: otherUser?.id,
-                };
-            });
-            setConversations(formattedConversations);
-        } catch (error) {
-            console.error("Error fetching conversations:", error);
-        }
-    };
-
     useEffect(() => {
         if (!token) return;
-        fetchConversations();
-    }, [token]);
 
-    const handleChatSelect = (chat) => {
-        setActiveChat(chat);
-    };
+        const fetchConversations = async () => {
+            try {
+                const response = await axiosInstance.get("/chat/conversations");
+                const formattedConversations = response.data.data.map((chat) => {
+                    const chatName = chat.display_name || chat.name || "Unknown Chat";
+                    const displayTime = chat.last_message_time || chat.latest_message?.sent_at_formatted || "";
+
+                    const currentUserId = Number(localStorage.getItem("current_user_id"));
+                    const otherUser = chat.users?.find(u => u.id !== currentUserId);
+
+                    return {
+                        id: chat.id,
+                        name: chatName,
+                        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(chatName)}&background=random`,
+                        lastMessage: chat.last_message_preview || "No messages yet...",
+                        time: displayTime,
+                        unread: chat.unread_count || 0,
+                        otherUser: otherUser?.id,
+                    };
+                });
+                
+                // Save directly to the store
+                setConversations(formattedConversations);
+            } catch (error) {
+                console.error("Error fetching conversations:", error);
+            }
+        };
+
+        fetchConversations();
+    }, [token, setConversations]);
 
     // 4. Global Listener for incoming messages
     useEffect(() => {
@@ -81,58 +71,44 @@ export const useChat = (token) => {
             echo.private(channelName).listen(".message.sent", (event) => {
                 const msg = event.message;
 
-                // Ignore messages sent by the current user
+                // Ignore own messages
                 if (msg.user_id === currentUserId || msg.sender?.id === currentUserId) return;
 
-                // Update sidebar instantly
-                setConversations((prevConvos) => prevConvos.map((c) => {
-                    if (c.id === chat.id) {
-                        const isOpen = activeChatRef.current?.id === chat.id;
-                        return {
-                            ...c,
-                            lastMessage: msg.body || msg.text || "Attachment",
-                            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                            unread: isOpen ? 0 : c.unread + 1
-                        };
-                    }
-                    return c;
-                }));
+                const isOpen = activeChatRef.current?.id === chat.id;
 
-                // If the chat is currently open, add the message to the screen
-                if (activeChatRef.current?.id === chat.id) {
+                // Update sidebar instantly via store without reloading everything
+                const currentConvo = useChatStore.getState().conversations.find(c => c.id === chat.id);
+                const newUnread = isOpen ? 0 : (currentConvo?.unread || 0) + 1;
+                
+                updateConversationSidebar(
+                    chat.id, 
+                    msg.body || msg.text || "Attachment", 
+                    new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    newUnread
+                );
+
+                // If chat is open, add message to screen and mark as read
+                if (isOpen) {
                     const mappedMsg = mapMessage(msg);
-                    setMessages((prev) => {
-                        const isDuplicate = prev.some((m) => m.id === mappedMsg.id);
-                        if (isDuplicate) return prev;
-                        return [...prev, mappedMsg];
-                    });
+                    
+                    // Directly access store to update states
+                    useChatStore.getState().addMessage(mappedMsg);
+                    useChatStore.getState().setTypingUser(null);
 
-                    // Clear typing indicator
-                    setTypingUser(null);
-
-                    // Mark as read instantly
                     axiosInstance.post(`/chat/messages/read`, { conversation_id: chat.id }).catch(e => console.log(e));
                 }
             });
         });
 
-        // Cleanup listeners
         return () => {
             conversations.forEach((chat) => echo.leave(`conversations.${chat.id}`));
         };
-    }, [conversations.length, setMessages, setTypingUser]);
+    }, [conversations.length, updateConversationSidebar]);
 
+    // Only return the trigger functions. States are now handled globally!
     return {
-        conversations,
-        activeChat,
-        messages,
-        typingUser,
-        onlineUsers,
-        handleChatSelect,
         handleSendMessage,
         triggerTyping,
-        loadMoreMessages,
-        hasMore,
-        isLoadingMore,
+        loadMoreMessages
     };
 };

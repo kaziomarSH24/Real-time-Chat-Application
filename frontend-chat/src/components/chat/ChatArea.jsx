@@ -1,52 +1,37 @@
-import React from "react";
-import { Send } from "lucide-react";
-import MessageHeader from "./MessageHeader";
-import MessageList from "./MessageList";
-import MessageInput from "./MessageInput";
+// src/components/chat/ChatArea.jsx
+import React from 'react';
+import MessageHeader from './MessageHeader';
+import MessageList from './MessageList';
+import MessageInput from './MessageInput';
+import { useChatStore } from '../../store/chatStore';
 
-const ChatArea = ({
-  activeChat,
-  messages,
-  currentUser,
-  onSendMessage,
-  typingUser,
-  onTyping,
-  onlineUsers,
-  onLoadMore,
-  hasMore,
-  isLoadingMore,
-}) => {
-  // Show placeholder if no conversation is selected
-  if (!activeChat) {
+const ChatArea = () => {
+    // স্টোর থেকে শুধু চেক করছি কোনো চ্যাট ওপেন করা আছে কি না
+    const activeChat = useChatStore((state) => state.activeChat);
+
+    // যদি কোনো চ্যাট সিলেক্ট করা না থাকে
+    if (!activeChat) {
+        return (
+            <div className="flex-1 flex items-center justify-center bg-gray-50">
+                <div className="text-center">
+                    <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span className="text-blue-500 text-3xl">💬</span>
+                    </div>
+                    <h2 className="text-xl font-semibold text-gray-700">Welcome to Messages</h2>
+                    <p className="text-gray-500 mt-2">Select a conversation to start chatting</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-gray-50 h-full hidden md:flex">
-        <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-          <Send className="w-10 h-10 text-blue-500 ml-1" />
+        <div className="flex-1 flex flex-col h-full bg-white relative">
+            {/* দেখুন, কোনো কম্পোনেন্টেই আর কোনো প্রপস পাস করার দরকার নেই! */}
+            <MessageHeader />
+            <MessageList />
+            <MessageInput />
         </div>
-        <h2 className="text-xl font-semibold text-gray-700">
-          Select Chat to send message.
-        </h2>
-      </div>
     );
-  }
-
-  return (
-    <div
-      className={`flex-1 flex flex-col h-full bg-white ${activeChat ? "block" : "hidden md:block"}`}
-    >
-      <MessageHeader activeChat={activeChat} onlineUsers={onlineUsers} />
-      <MessageList
-        messages={messages}
-        activeChat={activeChat}
-        currentUser={currentUser}
-        typingUser={typingUser}
-        onLoadMore={onLoadMore}
-        hasMore={hasMore}
-        isLoadingMore={isLoadingMore}
-      />
-      <MessageInput onSendMessage={onSendMessage} onTyping={onTyping} />
-    </div>
-  );
 };
 
 export default ChatArea;
